@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, sans-serif;
+      background: #f2f2f7;
+      color: #1c1c1e;
+      padding: 24px 16px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      background: #e5e5ea;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .tab.active {
+      background: #1c1c1e;
+      color: #fff;
+    }
+
+    .form { display: none; flex-direction: column; gap: 14px; }
+    .form.active { display: flex; }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #6e6e73;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: #fff;
+      font-size: 17px;
+      font-family: inherit;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    textarea { resize: none; height: 80px; }
+
+    .send-btn {
+      padding: 16px;
+      background: #1c1c1e;
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .send-btn:active { opacity: 0.8; }
+
+    #status {
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 500;
+      display: none;
+    }
+
+    #status.ok { background: #d1fae5; color: #065f46; display: block; }
+    #status.err { background: #fee2e2; color: #991b1b; display: block; }
+  </style>
+</head>
+<body>
+
+<h1>Time Tracker</h1>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('start')">Start</button>
+  <button class="tab" onclick="showTab('stop')">Stop</button>
+  <button class="tab" onclick="showTab('log')">Log</button>
+</div>
+
+<!-- START -->
+<div class="form active" id="form-start">
+  <div>
+    <label>Activity</label>
+    <input type="text" id="start-activity" placeholder="e.g. Gym" />
+  </div>
+  <div>
+    <label>Category</label>
+    <select id="start-category">
+      <option value="Strategic">Strategic</option>
+      <option value="Tactical">Tactical</option>
+    </select>
+  </div>
+  <div>
+    <label>Reason</label>
+    <textarea id="start-reason" placeholder="Why does this matter?"></textarea>
+  </div>
+  <div>
+    <label>Notes (optional)</label>
+    <input type="text" id="start-notes" placeholder="" />
+  </div>
+  <button class="send-btn" onclick="sendStart()">Start</button>
+</div>
+
+<!-- STOP -->
+<div class="form" id="form-stop">
+  <div>
+    <label>Notes (optional)</label>
+    <input type="text" id="stop-notes" placeholder="" />
+  </div>
+  <button class="send-btn" onclick="sendStop()">Stop</button>
+</div>
+
+<!-- LOG COMPLETE -->
+<div class="form" id="form-log">
+  <div>
+    <label>Activity</label>
+    <input type="text" id="log-activity" placeholder="e.g. Pickleball with Justin" />
+  </div>
+  <div>
+    <label>Start Time</label>
+    <input type="datetime-local" id="log-start" />
+  </div>
+  <div>
+    <label>End Time</label>
+    <input type="datetime-local" id="log-end" />
+  </div>
+  <div>
+    <label>Category</label>
+    <select id="log-category">
+      <option value="Strategic">Strategic</option>
+      <option value="Tactical">Tactical</option>
+    </select>
+  </div>
+  <div>
+    <label>Reason</label>
+    <textarea id="log-reason" placeholder="Why does this matter?"></textarea>
+  </div>
+  <div>
+    <label>Notes (optional)</label>
+    <input type="text" id="log-notes" placeholder="" />
+  </div>
+  <button class="send-btn" onclick="sendLog()">Log</button>
+</div>
+
+<div id="status"></div>
+
+<script>
+  const WEBHOOK = "https://script.google.com/macros/s/AKfycbzIC76o3UJOu5X8wGtDawR2BfyvskKILTyScQvSE4_qR-MXZbPZhAGOF_tbyP9AJ86V/exec";
+
+  function nowIso() {
+    const now = new Date();
+    const offsetMinutes = -now.getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? "+" : "-";
+    const abs = Math.abs(offsetMinutes);
+    const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+    const mm = String(abs % 60).padStart(2, "0");
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString().slice(0, -1) + sign + hh + ":" + mm;
+  }
+
+  function localIso(datetimeLocalValue) {
+    if (!datetimeLocalValue) return "";
+    const now = new Date();
+    const offsetMinutes = -now.getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? "+" : "-";
+    const abs = Math.abs(offsetMinutes);
+    const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+    const mm = String(abs % 60).padStart(2, "0");
+    return datetimeLocalValue + ":00" + sign + hh + ":" + mm;
+  }
+
+  function showTab(name) {
+    document.querySelectorAll(".tab").forEach((t, i) => {
+      t.classList.toggle("active", ["start","stop","log"][i] === name);
+    });
+    document.querySelectorAll(".form").forEach(f => f.classList.remove("active"));
+    document.getElementById("form-" + name).classList.add("active");
+    document.getElementById("status").className = "";
+  }
+
+  async function send(payload) {
+    const status = document.getElementById("status");
+    status.className = "";
+    try {
+      const res = await fetch(WEBHOOK, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.ok) {
+        status.textContent = "Sent! Entry ID: " + (data.entryId || "ok");
+        status.className = "ok";
+      } else {
+        status.textContent = "Error: " + data.error;
+        status.className = "err";
+      }
+    } catch (e) {
+      status.textContent = "Failed to send: " + e.message;
+      status.className = "err";
+    }
+  }
+
+  function sendStart() {
+    const activity = document.getElementById("start-activity").value.trim();
+    const category = document.getElementById("start-category").value;
+    const reason = document.getElementById("start-reason").value.trim();
+    const notes = document.getElementById("start-notes").value.trim();
+    if (!activity || !reason) return alert("Activity and Reason are required.");
+    send({ action: "start", entry: { activity, startTime: nowIso(), category, reason, notes } });
+  }
+
+  function sendStop() {
+    const notes = document.getElementById("stop-notes").value.trim();
+    send({ action: "stop", entry: { endTime: nowIso(), notes } });
+  }
+
+  function sendLog() {
+    const activity = document.getElementById("log-activity").value.trim();
+    const startTime = localIso(document.getElementById("log-start").value);
+    const endTime = localIso(document.getElementById("log-end").value);
+    const category = document.getElementById("log-category").value;
+    const reason = document.getElementById("log-reason").value.trim();
+    const notes = document.getElementById("log-notes").value.trim();
+    if (!activity || !startTime || !endTime || !reason) return alert("Activity, times, and Reason are required.");
+    send({ action: "log_complete", entry: { activity, startTime, endTime, category, reason, notes } });
+  }
+</script>
+
+</body>
+</html>
