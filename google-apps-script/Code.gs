@@ -34,17 +34,19 @@ function doPost(e) {
     if (action === "log_complete") {
       const start = new Date(entry.startTime);
       const end = new Date(entry.endTime);
+      const mins = durationMinutes(start, end);
       const row = [
         createEntryId(),
         start,
         start,
         end,
-        durationMinutes(start, end),
+        mins,
         entry.activity,
         entry.category,
         entry.reason,
         "Closed",
-        entry.notes || ""
+        entry.notes || "",
+        durationHours(mins)
       ];
 
       sheet.appendRow(row);
@@ -70,9 +72,11 @@ function doPost(e) {
         const rowNumber = i + 2;
         const start = values[i][2];
 
+        const mins = durationMinutes(start, end);
         sheet.getRange(rowNumber, 4).setValue(end);
-        sheet.getRange(rowNumber, 5).setValue(durationMinutes(start, end));
+        sheet.getRange(rowNumber, 5).setValue(mins);
         sheet.getRange(rowNumber, 9).setValue("Closed");
+        sheet.getRange(rowNumber, 11).setValue(durationHours(mins));
 
         if (entry.notes) {
           sheet.getRange(rowNumber, 10).setValue(entry.notes);
@@ -111,6 +115,10 @@ function durationMinutes(start, end) {
   }
 
   return Math.round(ms / 60000);
+}
+
+function durationHours(minutes) {
+  return Math.round(minutes / 60 * 4) / 4;
 }
 
 function createEntryId() {
