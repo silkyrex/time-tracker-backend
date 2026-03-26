@@ -21,7 +21,6 @@ function doPost(e) {
         start,
         "",
         "",
-        "",
         "Open",
         entry.notes || "",
         createEntryId()
@@ -29,13 +28,12 @@ function doPost(e) {
 
       sheet.appendRow(row);
       formatRow(sheet, sheet.getLastRow());
-      return json({ ok: true, action: "start", entryId: row[10] });
+      return json({ ok: true, action: "start", entryId: row[9] });
     }
 
     if (action === "log_complete") {
       const start = new Date(entry.startTime);
       const end = new Date(entry.endTime);
-      const mins = durationMinutes(start, end);
       const row = [
         entry.activity,
         entry.category,
@@ -43,8 +41,7 @@ function doPost(e) {
         start,
         start,
         end,
-        mins,
-        durationHours(mins),
+        durationHours(start, end),
         "Closed",
         entry.notes || "",
         createEntryId()
@@ -52,7 +49,7 @@ function doPost(e) {
 
       sheet.appendRow(row);
       formatRow(sheet, sheet.getLastRow());
-      return json({ ok: true, action: "log_complete", entryId: row[10] });
+      return json({ ok: true, action: "log_complete", entryId: row[9] });
     }
 
     if (action === "stop") {
@@ -63,28 +60,26 @@ function doPost(e) {
         throw new Error("No open entry found to stop");
       }
 
-      const values = sheet.getRange(2, 1, lastRow - 1, 11).getValues();
+      const values = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
 
       for (let i = values.length - 1; i >= 0; i -= 1) {
-        if (values[i][8] !== "Open") {
+        if (values[i][7] !== "Open") {
           continue;
         }
 
         const rowNumber = i + 2;
         const start = values[i][4];
-        const mins = durationMinutes(start, end);
 
         sheet.getRange(rowNumber, 6).setValue(end);
-        sheet.getRange(rowNumber, 7).setValue(mins);
-        sheet.getRange(rowNumber, 8).setValue(durationHours(mins));
-        sheet.getRange(rowNumber, 9).setValue("Closed");
+        sheet.getRange(rowNumber, 7).setValue(durationHours(start, end));
+        sheet.getRange(rowNumber, 8).setValue("Closed");
 
         if (entry.notes) {
-          sheet.getRange(rowNumber, 10).setValue(entry.notes);
+          sheet.getRange(rowNumber, 9).setValue(entry.notes);
         }
 
         formatRow(sheet, rowNumber);
-        return json({ ok: true, action: "stop", entryId: values[i][10] });
+        return json({ ok: true, action: "stop", entryId: values[i][9] });
       }
 
       throw new Error("No open entry found to stop");
@@ -97,7 +92,7 @@ function doPost(e) {
         throw new Error("No entry found to delete");
       }
 
-      const entryId = sheet.getRange(lastRow, 11).getValue();
+      const entryId = sheet.getRange(lastRow, 10).getValue();
       sheet.deleteRow(lastRow);
       return json({ ok: true, action: "delete_latest", entryId: entryId });
     }
@@ -108,18 +103,14 @@ function doPost(e) {
   }
 }
 
-function durationMinutes(start, end) {
+function durationHours(start, end) {
   const ms = end.getTime() - start.getTime();
 
   if (ms < 0) {
     throw new Error("End time cannot be earlier than start time");
   }
 
-  return Math.round(ms / 60000);
-}
-
-function durationHours(minutes) {
-  return Math.round(minutes / 60 * 4) / 4;
+  return Math.round(ms / 60000 / 60 * 4) / 4;
 }
 
 function createEntryId() {
@@ -137,8 +128,7 @@ function formatRow(sheet, rowNumber) {
   sheet.getRange(rowNumber, 4).setNumberFormat("yyyy-mm-dd");
   sheet.getRange(rowNumber, 5).setNumberFormat("h:mm AM/PM");
   sheet.getRange(rowNumber, 6).setNumberFormat("h:mm AM/PM");
-  sheet.getRange(rowNumber, 7).setNumberFormat("0");
-  sheet.getRange(rowNumber, 8).setNumberFormat("0.00");
+  sheet.getRange(rowNumber, 7).setNumberFormat("0.00");
 }
 
 function json(data) {
