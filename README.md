@@ -20,7 +20,7 @@ The idea is:
 
 Create a Google Sheet with this first row:
 
-`Entry ID | Date | Start Time | End Time | Duration Minutes | Activity | Category | Reason | Status | Notes`
+`Activity | Category | Reason | Date | Start Time | End Time | Duration Minutes | Duration Hours | Status | Notes | Entry ID`
 
 The Apps Script expects that header order.
 
