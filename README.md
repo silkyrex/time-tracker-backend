@@ -1,8 +1,10 @@
 # Time Tracker Backend
 
+Log time with your voice. Speak, approve, done.
+
 Voice-assisted time tracking workflow with a small Node CLI, webhook, and Google Sheets backend.
 
-The intended flow is simple:
+The intended flow:
 1. Speak naturally into ChatGPT, Claude, or another assistant
 2. Convert that into a structured time entry
 3. Approve the entry
@@ -13,7 +15,7 @@ The intended flow is simple:
 - `tracker.js` - CLI for `start`, `stop`, `log-complete`, and `delete-latest`
 - `mock-webhook.js` - local test server
 - `google-apps-script/Code.gs` - Apps Script endpoint for Google Sheets
-- `index.html` - simple local UI
+- `index.html` - local UI
 
 ## Quick start
 
